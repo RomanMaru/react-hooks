@@ -1,4 +1,4 @@
-import React, { useReducer, useCallback } from 'react';
+import React, { useReducer, useCallback, useMemo } from 'react';
 import IngredientList from './IngredientList'
 import IngredientForm from './IngredientForm';
 import Search from './Search';
@@ -34,20 +34,17 @@ const httpReducer = (currentHttpState, action) => {
 
 const Ingredients = () => {
   const [userIngredients, dispatch] = useReducer(ingredientReducer, [])
-  //const [userIngredients, setUserIngredients] = useState([])
   const [httpState, dispatchHttp] = useReducer(httpReducer, { loading: false, error: null })
-  //const [isLoading, setIsLoading] = useState(false)
-  //const [error, setError] = useState()
+
 
 
 
   const filteredIngredientsHandler = useCallback(filteredIngredients => {
-    //setUserIngredients(filteredIngredients)
     dispatch({ type: 'SET', ingredients: filteredIngredients })
   }, [])
 
 
-  const addIngredientHandler = ingredient => {
+  const addIngredientHandler = useCallback(ingredient => {
     dispatchHttp({ type: 'SEND' })
     fetch("https://reacthooks-e845e.firebaseio.com/ingredients.json", {
       method: 'POST',
@@ -57,13 +54,6 @@ const Ingredients = () => {
       dispatchHttp({ type: 'RESPONSE' })
       return response.json()
     }).then(responseData => {
-      // setUserIngredients(prevIngredients => [
-      //   ...prevIngredients,
-      //   {
-      //     id: responseData.name,
-      //     ...ingredient
-      //   }
-      // ])
       dispatch({
         type: 'ADD',
         ingredient: {
@@ -72,24 +62,27 @@ const Ingredients = () => {
         }
       })
     })
-  }
+  }, [])
 
-  const removeIngredientHandler = ingredientId => {
+  const removeIngredientHandler = useCallback(ingredientId => {
     dispatchHttp({ type: 'SEND' })
-    fetch(`https://reacthooks-e845e.firebaseio.com/ingredients/${ingredientId}.json`, {
-      method: 'DELETE',
-    }).then(response => {
+    fetch(`https://reacthooks-e845e.firebaseio.com/ingredients/${ingredientId}.json`, { method: 'DELETE', }).then(response => {
       dispatchHttp({ type: 'RESPONSE' })
-      // setUserIngredients(prevIngredients => prevIngredients.filter(ingredient => ingredient.id !== ingredientId))
       dispatch({ type: 'DELETE', id: ingredientId })
     }).catch(error => {
       dispatchHttp({ type: 'ERROR', errorMessage: 'Oops, something went wrong!' })
     })
-  }
+  }, [])
 
-  const clearError = () => {
+  const clearError = useCallback(() => {
     dispatchHttp({ type: 'CLEAR' })
-  }
+  })
+
+  const ingredientList = useMemo(() => {
+    return <IngredientList
+      ingredients={userIngredients}
+      onRemoveItem={removeIngredientHandler} />
+  }, [userIngredients, removeIngredientHandler])
 
   return (
     <div className="App">
@@ -99,7 +92,7 @@ const Ingredients = () => {
         loading={httpState.loading} />
       <section>
         <Search onLoadIngeredients={filteredIngredientsHandler} />
-        <IngredientList ingredients={userIngredients} onRemoveItem={removeIngredientHandler} />
+        {ingredientList}
       </section>
     </div>
   );
